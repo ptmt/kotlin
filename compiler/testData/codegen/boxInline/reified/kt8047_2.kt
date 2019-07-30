@@ -4,7 +4,7 @@
 package test
 
 inline fun <reified T> f(x : () -> Unit) {
-    object { init { arrayOf<T>() } }
+    object { init { "OK" is T } }
 }
 
 // FILE: 2.kt
