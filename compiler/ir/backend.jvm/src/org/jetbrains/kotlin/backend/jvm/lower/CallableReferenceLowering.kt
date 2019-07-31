@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.IrElementTransformerVoidWithContext
 import org.jetbrains.kotlin.backend.common.ir.copyTo
 import org.jetbrains.kotlin.backend.common.ir.createImplicitParameterDeclarationWithWrappedDescriptor
+import org.jetbrains.kotlin.backend.common.lower.at
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlock
 import org.jetbrains.kotlin.backend.common.lower.irIfThen
@@ -17,8 +18,9 @@ import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
 import org.jetbrains.kotlin.backend.jvm.codegen.isInlineFunctionCall
 import org.jetbrains.kotlin.backend.jvm.codegen.isInlineIrExpression
+import org.jetbrains.kotlin.backend.jvm.ir.createJvmIrBuilder
+import org.jetbrains.kotlin.backend.jvm.ir.irArray
 import org.jetbrains.kotlin.backend.jvm.ir.isInlineParameter
-import org.jetbrains.kotlin.backend.jvm.localDeclarationsPhase
 import org.jetbrains.kotlin.builtins.functions.FunctionInvokeDescriptor
 import org.jetbrains.kotlin.codegen.PropertyReferenceCodegen
 import org.jetbrains.kotlin.descriptors.Modality
@@ -32,10 +34,8 @@ import org.jetbrains.kotlin.ir.builders.declarations.addValueParameter
 import org.jetbrains.kotlin.ir.builders.declarations.buildClass
 import org.jetbrains.kotlin.ir.declarations.*
 import org.jetbrains.kotlin.ir.expressions.*
-import org.jetbrains.kotlin.ir.expressions.impl.IrCallImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrClassReferenceImpl
 import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.types.IrSimpleType
 import org.jetbrains.kotlin.ir.types.IrType
@@ -72,24 +72,17 @@ internal class CallableReferenceLowering(private val context: JvmBackendContext)
         expression.transformChildrenVoid(this)
 
         if (expression.valueArgumentsCount < FunctionInvokeDescriptor.BIG_ARITY ||
-            !expression.symbol.owner.parentAsClass.defaultType.isFunctionOrKFunction())
-            return expression
+            !expression.symbol.owner.parentAsClass.defaultType.isFunctionOrKFunction()
+        ) return expression
 
-        return IrCallImpl(
-            expression.startOffset, expression.endOffset,
-            expression.type, functionNInvokeFun.symbol, functionNInvokeFun.descriptor,
-            1, expression.origin
-        ).apply {
-            putTypeArgument(0, expression.type)
-            dispatchReceiver = expression.dispatchReceiver
-            extensionReceiver = expression.extensionReceiver
-            val vararg = IrVarargImpl(
-                UNDEFINED_OFFSET, UNDEFINED_OFFSET,
-                context.ir.symbols.array.typeWith(context.irBuiltIns.anyNType),
-                context.irBuiltIns.anyNType,
-                (0 until expression.valueArgumentsCount).map { expression.getValueArgument(it)!! }
-            )
-            putValueArgument(0, vararg)
+        return context.createJvmIrBuilder(currentScope!!.scope.scopeOwnerSymbol).run {
+            at(expression)
+            irCall(functionNInvokeFun).apply {
+                dispatchReceiver = expression.dispatchReceiver
+                putValueArgument(0, irArray(backendContext.ir.symbols.array.typeWith(context.irBuiltIns.anyNType)) {
+                    (0 until expression.valueArgumentsCount).forEach { +expression.getValueArgument(it)!! }
+                })
+            }
         }
     }
 
@@ -289,7 +282,7 @@ internal class CallableReferenceLowering(private val context: JvmBackendContext)
                 }
             }
 
-            body = context.createIrBuilder(symbol).run {
+            body = context.createJvmIrBuilder(symbol).run {
                 var unboundIndex = 0
                 irExprBody(irCall(callee).apply {
                     for ((typeParameter, typeArgument) in typeArgumentsMap) {
@@ -305,25 +298,26 @@ internal class CallableReferenceLowering(private val context: JvmBackendContext)
                                     boundReceiver.second.type
                                 )
 
-                            unboundIndex >= argumentTypes.size ->
-                                // Unbound, but out of range - empty vararg or default value.
-                                // TODO For suspend functions the last argument is continuation and it is implicit:
-                                //      irCall(getContinuationSymbol, listOf(ourSymbol.descriptor.returnType!!))
-                                null
-
                             // If a vararg parameter corresponds to exactly one KFunction argument, which is an array, that array
-                            // is forwarded as a spread. In all other cases, excess arguments are packed into a new array.
+                            // is forwarded as is. In all other cases, excess arguments are packed into a new array.
                             //
                             //     fun f(x: (Int, Array<String>) -> String) = x(0, arrayOf("OK", "FAIL"))
                             //     fun g(x: (Int, String, String) -> String) = x(0, "OK", "FAIL")
                             //     fun h(i: Int, vararg xs: String) = xs[i]
                             //     f(::h) == g(::h)
                             //
-                            parameter.isVararg && (unboundIndex < argumentTypes.size - 1 || argumentTypes.last() != parameter.type) ->
-                                IrVarargImpl(
-                                    startOffset, endOffset, parameter.type, parameter.varargElementType!!,
-                                    (unboundIndex until argumentTypes.size).map { irGet(valueParameters[unboundIndex++]) }
-                                )
+                            parameter.isVararg && unboundIndex < argumentTypes.size && parameter.type == valueParameters[unboundIndex].type ->
+                                irArray(parameter.type) { addSpread(irGet(valueParameters[unboundIndex++])) }
+                            parameter.isVararg && (unboundIndex < argumentTypes.size || !parameter.hasDefaultValue()) ->
+                                irArray(parameter.type) {
+                                    (unboundIndex until argumentTypes.size).forEach { +irGet(valueParameters[unboundIndex++]) }
+                                }
+
+                            unboundIndex >= argumentTypes.size ->
+                                // Default value argument
+                                // TODO For suspend functions the last argument is continuation and it is implicit:
+                                //      irCall(getContinuationSymbol, listOf(ourSymbol.descriptor.returnType!!))
+                                null
 
                             else ->
                                 irGet(valueParameters[unboundIndex++])
