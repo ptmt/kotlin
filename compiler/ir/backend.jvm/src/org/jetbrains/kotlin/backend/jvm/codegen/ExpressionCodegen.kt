@@ -374,12 +374,6 @@ class ExpressionCodegen(
         }
 
         callGenerator.beforeValueParametersStart()
-        val typeParameters = if (callee is IrConstructor)
-            callee.parentAsClass.typeParameters + callee.typeParameters
-        else
-            callee.typeParameters
-        val typeArguments = (0 until typeParameters.size).map { expression.getTypeArgument(it)!! }
-        val typeSubstitutionMap = typeParameters.map { it.symbol }.zip(typeArguments).toMap()
         expression.symbol.owner.valueParameters.forEachIndexed { i, irParameter ->
             val arg = expression.getValueArgument(i)
             val parameterType = callable.valueParameterTypes[i]
@@ -425,7 +419,7 @@ class ExpressionCodegen(
         }
 
         return when {
-            returnType.substitute(typeSubstitutionMap).isNothing() -> {
+            returnType.substitute(expression.typeSubstitutionMap).isNothing() -> {
                 mv.aconst(null)
                 mv.athrow()
                 immaterialUnitValue
