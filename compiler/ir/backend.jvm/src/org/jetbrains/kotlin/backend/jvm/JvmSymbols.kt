@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.backend.jvm
 
 import org.jetbrains.kotlin.backend.common.ir.Symbols
 import org.jetbrains.kotlin.backend.common.ir.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.backend.jvm.intrinsics.KClassJavaProperty
 import org.jetbrains.kotlin.descriptors.ClassDescriptor
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -22,6 +21,7 @@ import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrPropertySymbol
 import org.jetbrains.kotlin.ir.symbols.IrSimpleFunctionSymbol
 import org.jetbrains.kotlin.ir.symbols.impl.IrExternalPackageFragmentSymbolImpl
+import org.jetbrains.kotlin.ir.types.classOrNull
 import org.jetbrains.kotlin.ir.types.defaultType
 import org.jetbrains.kotlin.ir.types.isNullableAny
 import org.jetbrains.kotlin.ir.types.typeWith
@@ -341,4 +341,57 @@ class JvmSymbols(
                 returnType = javaLangClass.typeWith()
             }
         }.symbol
+
+    val spreadBuilder = createClass(FqName("kotlin.jvm.internal.SpreadBuilder")) { klass ->
+        klass.addConstructor().apply {
+            addValueParameter("size", irBuiltIns.intType)
+        }
+
+        klass.addFunction("addSpread", irBuiltIns.unitType).apply {
+            addValueParameter("container", irBuiltIns.anyNType)
+        }
+
+        klass.addFunction("add", irBuiltIns.unitType).apply {
+            addValueParameter("element", irBuiltIns.anyNType)
+        }
+
+        klass.addFunction("size", irBuiltIns.intType)
+
+        klass.addFunction("toArray", irBuiltIns.arrayClass.typeWith(irBuiltIns.anyNType)).apply {
+            addValueParameter("a", irBuiltIns.arrayClass.typeWith(irBuiltIns.anyNType))
+        }
+    }
+
+    val primitiveSpreadBuilders = irBuiltIns.primitiveIrTypes.associateWith { irType ->
+        val name = irType.classOrNull!!.owner.name
+        createClass(FqName("kotlin.jvm.internal.${name}SpreadBuilder")) { klass ->
+            klass.addConstructor().apply {
+                addValueParameter("size", irBuiltIns.intType)
+            }
+
+            klass.addFunction("addSpread", irBuiltIns.unitType).apply {
+                // This is really a generic method in the superclass (PrimitiveSpreadBuilder).
+                // That is why the argument type is Object rather than the correct
+                // primitive array type.
+                addValueParameter("container", irBuiltIns.anyNType)
+            }
+
+            klass.addFunction("add", irBuiltIns.unitType).apply {
+                addValueParameter("element", irType)
+            }
+
+            klass.addFunction("toArray", irBuiltIns.primitiveArrayForType.getValue(irType).owner.typeWith())
+        }
+    }
+
+    val systemClass = createClass(FqName("java.lang.System")) { klass ->
+        klass.addFunction("arraycopy", irBuiltIns.unitType, isStatic = true).apply {
+            addValueParameter("src", irBuiltIns.anyNType)
+            addValueParameter("srcPos", irBuiltIns.intType)
+            addValueParameter("dest", irBuiltIns.anyNType)
+            addValueParameter("destPos", irBuiltIns.intType)
+            addValueParameter("length", irBuiltIns.intType)
+        }
+    }
+    val systemArraycopy = systemClass.functions.single { it.name.asString() == "arraycopy" }
 }

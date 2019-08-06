@@ -116,6 +116,8 @@ private val jvmFilePhases =
         provisionalFunctionExpressionPhase then
         inventNamesForLocalClassesPhase then
         kCallableNamePropertyPhase then
+        annotationPhase then
+        varargPhase then
         arrayConstructorPhase then
 
         lateinitPhase then
@@ -128,7 +130,6 @@ private val jvmFilePhases =
         propertiesPhase then
         renameFieldsPhase then
         assertionPhase then
-        annotationPhase then
         tailrecPhase then
 
         jvmInlineClassPhase then
