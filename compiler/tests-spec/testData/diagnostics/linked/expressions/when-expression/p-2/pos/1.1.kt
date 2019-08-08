@@ -4,7 +4,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-106
+ * SPEC VERSION: 0.1-111
  * PLACE: expressions, when-expression -> paragraph 2 -> sentence 1
  * NUMBER: 1
  * DESCRIPTION: When without bound value, various expressions in the control structure body.

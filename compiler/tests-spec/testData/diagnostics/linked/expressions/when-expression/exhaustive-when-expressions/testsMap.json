@@ -1,6 +1,26 @@
 {
   "2": {
     "neg": {
+      "11": [
+        {
+          "specVersion": "0.1-111",
+          "casesNumber": 10,
+          "description": "Non-exhaustive when using subclasses of the nullable sealed class.",
+          "unexpectedBehaviour": false
+        },
+        {
+          "specVersion": "0.1-111",
+          "casesNumber": 6,
+          "description": "Non-exhaustive when using nullable enum values.",
+          "unexpectedBehaviour": false
+        },
+        {
+          "specVersion": "0.1-111",
+          "casesNumber": 3,
+          "description": "Non-exhaustive when using nullable boolean values.",
+          "unexpectedBehaviour": false
+        }
+      ],
       "1": [
         {
           "specVersion": "0.1-106",
@@ -25,42 +45,42 @@
       ],
       "8": [
         {
-          "specVersion": "0.1-106",
-          "casesNumber": 3,
-          "description": "Non-exhaustive when using nullable boolean values.",
-          "unexpectedBehaviour": false
-        },
-        {
-          "specVersion": "0.1-106",
-          "casesNumber": 6,
-          "description": "Non-exhaustive when using nullable enum values.",
-          "unexpectedBehaviour": false
-        },
-        {
-          "specVersion": "0.1-106",
-          "casesNumber": 10,
-          "description": "Non-exhaustive when using subclasses of the nullable sealed class.",
+          "specVersion": "0.1-111",
+          "casesNumber": 7,
+          "description": "Non-exhaustive when using enum values.",
           "unexpectedBehaviour": false
         }
       ],
       "6": [
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 12,
           "description": "Non-exhaustive when using subclasses of the sealed class.",
-          "unexpectedBehaviour": false
-        }
-      ],
-      "7": [
-        {
-          "specVersion": "0.1-106",
-          "casesNumber": 7,
-          "description": "Non-exhaustive when using enum values.",
           "unexpectedBehaviour": false
         }
       ]
     },
     "pos": {
+      "11": [
+        {
+          "specVersion": "0.1-111",
+          "casesNumber": 3,
+          "description": "Exhaustive when using nullable enum values.",
+          "unexpectedBehaviour": true
+        },
+        {
+          "specVersion": "0.1-111",
+          "casesNumber": 7,
+          "description": "Exhaustive when using subclasses of the nullable sealed class.",
+          "unexpectedBehaviour": true
+        },
+        {
+          "specVersion": "0.1-111",
+          "casesNumber": 2,
+          "description": "Exhaustive when using nullable boolean values.",
+          "unexpectedBehaviour": false
+        }
+      ],
       "1": [
         {
           "specVersion": "0.1-106",
@@ -91,38 +111,18 @@
       ],
       "8": [
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 2,
-          "description": "Exhaustive when using nullable boolean values.",
-          "unexpectedBehaviour": false
-        },
-        {
-          "specVersion": "0.1-106",
-          "casesNumber": 7,
-          "description": "Exhaustive when using subclasses of the nullable sealed class.",
-          "unexpectedBehaviour": true
-        },
-        {
-          "specVersion": "0.1-106",
-          "casesNumber": 3,
           "description": "Exhaustive when using enum values.",
-          "unexpectedBehaviour": true
+          "unexpectedBehaviour": false
         }
       ],
       "6": [
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 9,
           "description": "Exhaustive when using subclasses of the sealed class.",
           "unexpectedBehaviour": true
-        }
-      ],
-      "7": [
-        {
-          "specVersion": "0.1-106",
-          "casesNumber": 2,
-          "description": "Exhaustive when using enum values.",
-          "unexpectedBehaviour": false
         }
       ]
     }

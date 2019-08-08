@@ -3,7 +3,7 @@
 /*
  * KOTLIN DIAGNOSTICS SPEC TEST (POSITIVE)
  *
- * SPEC VERSION: 0.1-106
+ * SPEC VERSION: 0.1-111
  * PLACE: expressions, when-expression -> paragraph 6 -> sentence 1
  * NUMBER: 1
  * DESCRIPTION: 'When' with bound value and type test condition.

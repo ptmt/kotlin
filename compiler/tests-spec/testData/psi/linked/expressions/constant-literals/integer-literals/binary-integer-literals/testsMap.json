@@ -3,7 +3,7 @@
     "neg": {
       "2": [
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 0,
           "description": "Binary integer literals with underscore breaking the prefix (in it).",
           "unexpectedBehaviour": false
@@ -27,25 +27,25 @@
     "pos": {
       "2": [
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 0,
           "description": "Binary integer literals with underscore symbols in valid places.",
           "unexpectedBehaviour": false
         },
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 0,
           "description": "Binary integer literals with underscore symbol before the first digit (it\u0027s considered as identifiers).",
           "unexpectedBehaviour": false
         },
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 0,
           "description": "Binary integer literals with underscore symbol after the last digit.",
           "unexpectedBehaviour": false
         },
         {
-          "specVersion": "0.1-106",
+          "specVersion": "0.1-111",
           "casesNumber": 0,
           "description": "Binary integer literals with underscore symbols after binary prefix.",
           "unexpectedBehaviour": false
