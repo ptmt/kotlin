@@ -396,6 +396,10 @@ allprojects {
             configurations.findByName("kotlinCompilerClasspath")?.let {
                 dependencies.add(it.name, files(bootstrapCompilerClasspath))
             }
+
+            configurations.findByName("kotlinCompilerPluginClasspath")?.let {
+                dependencies.add(it.name, "org.jetbrains.kotlin:kotlin-stdlib:$bootstrapKotlinVersion")
+            }
         }
 
         // Aggregate task for build related checks
