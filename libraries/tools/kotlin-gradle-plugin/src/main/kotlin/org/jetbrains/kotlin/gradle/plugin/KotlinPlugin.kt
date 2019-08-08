@@ -86,12 +86,15 @@ internal abstract class KotlinSourceSetProcessor<T : AbstractKotlinCompile<*>>(
 
         kotlinCompilation.registerKotlinCompileTask(name)
 
+        kotlinCompilation.taskDataForTask(name).apply {
+            destinationDirProvider = { defaultKotlinDestinationDir }
+        }
+
         return doRegisterTask(project, name) {
             it.compilation = kotlinCompilation
 
             it.description = taskDescription
             it.mapClasspath { kotlinCompilation.compileDependencyFiles }
-            it.setDestinationDir { defaultKotlinDestinationDir }
             kotlinCompilation.output.addClassesDir { project.files(kotlinTask.doGetTask().destinationDir).builtBy(kotlinTask.doGetTask()) }
         }
     }
