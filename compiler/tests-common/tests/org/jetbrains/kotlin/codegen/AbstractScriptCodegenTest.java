@@ -21,8 +21,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.kotlin.config.CompilerConfiguration;
 import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.test.ConfigurationKind;
+import org.jetbrains.kotlin.test.InTextDirectivesUtils;
 import org.jetbrains.kotlin.utils.ExceptionUtilsKt;
 
+import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 
@@ -44,6 +46,7 @@ public abstract class AbstractScriptCodegenTest extends CodegenTestCase {
     @Override
     protected void doTest(@NotNull String filename) {
         loadFileByFullPath(filename);
+        boolean isIgnored = InTextDirectivesUtils.isIgnoredTarget(getBackend(), new File(filename));
 
         try {
             //noinspection ConstantConditions
@@ -77,7 +80,9 @@ public abstract class AbstractScriptCodegenTest extends CodegenTestCase {
             }
         }
         catch (Throwable e) {
-            System.out.println(generateToText());
+            if (!isIgnored) {
+                System.out.println(generateToText());
+            }
             throw ExceptionUtilsKt.rethrow(e);
         }
     }

@@ -36,10 +36,7 @@ import org.jetbrains.kotlin.name.FqName;
 import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.scripting.definitions.ScriptDependenciesProvider;
 import org.jetbrains.kotlin.scripting.resolve.ScriptCompilationConfigurationWrapper;
-import org.jetbrains.kotlin.test.ConfigurationKind;
-import org.jetbrains.kotlin.test.InTextDirectivesUtils;
-import org.jetbrains.kotlin.test.KotlinTestUtils;
-import org.jetbrains.kotlin.test.TestJdkKind;
+import org.jetbrains.kotlin.test.*;
 import org.jetbrains.kotlin.test.clientserver.TestProxy;
 import org.jetbrains.kotlin.test.testFramework.KtUsefulTestCase;
 import org.jetbrains.kotlin.utils.ExceptionUtilsKt;
@@ -739,6 +736,10 @@ public abstract class CodegenTestCase extends KtUsefulTestCase {
             javacOptions.add("-target");
             javacOptions.add(JAVA_COMPILATION_TARGET);
         }
+    }
+
+    protected TargetBackend getBackend() {
+        return TargetBackend.JVM;
     }
 
     public static class TestFile implements Comparable<TestFile> {
