@@ -9,16 +9,23 @@ import com.intellij.ide.util.PropertiesComponent
 import com.intellij.openapi.project.Project
 
 object NewInferenceForIDEAnalysisComponent {
-    private const val inferenceOption = "kotlin.use.new.inference.for.ide.analysis"
-    const val defaultState = true
+    private const val inferenceOptionV1 = "kotlin.use.new.inference.for.ide.analysis"
+    private const val inferenceOptionV2 = "kotlin.use.new.inference.for.ide.analysis.v2"
+    const val defaultState = false
 
     @JvmStatic
     fun setEnabled(project: Project, state: Boolean) {
-        PropertiesComponent.getInstance(project).setValue(inferenceOption, state, defaultState)
+        PropertiesComponent.getInstance(project).setValue(inferenceOptionV2, state, defaultState)
     }
 
     @JvmStatic
     fun isEnabled(project: Project): Boolean {
-        return PropertiesComponent.getInstance(project).getBoolean(inferenceOption, defaultState)
+        return PropertiesComponent.getInstance(project).getBoolean(inferenceOptionV2, defaultState)
+    }
+
+    // This method is preserved only for FUS collector and it shouldn't be used in other contexts
+    @Deprecated("Use isEnabled method instead", replaceWith = ReplaceWith("this.isEnabled(project)"))
+    fun isEnabledForV1(project: Project): Boolean {
+        return PropertiesComponent.getInstance(project).getBoolean(inferenceOptionV1, false)
     }
 }
