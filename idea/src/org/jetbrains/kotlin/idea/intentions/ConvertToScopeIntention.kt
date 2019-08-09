@@ -21,6 +21,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiComment
 import com.intellij.psi.PsiElement
 import com.intellij.psi.PsiWhiteSpace
+import com.intellij.psi.util.PsiTreeUtil
 import org.jetbrains.kotlin.idea.intentions.ConvertToScopeIntention.ScopeFunction.*
 import org.jetbrains.kotlin.idea.references.mainReference
 import org.jetbrains.kotlin.psi.*
@@ -57,26 +58,45 @@ sealed class ConvertToScopeIntention(
             else ->
                 return false
         }
-        return element.collectTargetElements() != null
+
+        val referenceName = element.tryExtractReferenceName() ?: return false
+        val expressionToApply = element.tryGetExpressionToApply(referenceName) ?: return false
+        return expressionToApply.collectTargetElements(referenceName) != null
     }
 
+    private fun KtExpression.tryGetExpressionToApply(referenceName: String): KtExpression? {
+        val childOfBlock = PsiTreeUtil.findFirstParent(this) {
+            it.parent is KtBlockExpression
+        } as? KtExpression ?: return null
+
+        return if (childOfBlock.isTarget(referenceName)) childOfBlock else null
+    }
+
+
     override fun applyTo(element: KtExpression, editor: Editor?) {
-        val (targets, referenceName) = element.collectTargetElements() ?: return
+
+        val referenceName = element.tryExtractReferenceName() ?: return
+        val expressionToApply = element.tryGetExpressionToApply(referenceName) ?: return
+
+        val targets = expressionToApply.collectTargetElements(referenceName) ?: return
+
+
         val first = targets.firstOrNull() ?: return
         val last = targets.lastOrNull() ?: return
-        val property = element.prevProperty()
+        val property = expressionToApply.prevProperty()
         val propertyOrFirst = when (scopeFunction) {
             ALSO, APPLY -> property
             else -> first
         } ?: return
-        val parent = element.parent.let { if (it is KtBinaryExpression) it.parent else it }
 
-        val psiFactory = KtPsiFactory(element)
+        val psiFactory = KtPsiFactory(expressionToApply)
         val (scopeFunctionCall, block) = psiFactory.createScopeFunctionCall(propertyOrFirst) ?: return
         block.addRange(property?.nextSibling ?: first, last)
         block.children.forEach { replace(it, referenceName, psiFactory) }
-        parent.addBefore(scopeFunctionCall, propertyOrFirst)
-        parent.deleteChildRange(propertyOrFirst, last)
+
+        propertyOrFirst.parent.addBefore(scopeFunctionCall, propertyOrFirst)
+
+        propertyOrFirst.parent.deleteChildRange(propertyOrFirst, last)
     }
 
     private fun replace(element: PsiElement, referenceName: String, psiFactory: KtPsiFactory) {
@@ -102,26 +122,39 @@ sealed class ConvertToScopeIntention(
         }
     }
 
-    private fun KtExpression.collectTargetElements(): Pair<List<PsiElement>, String>? {
-        val (targets, referenceName) = when (scopeFunction) {
-            ALSO, APPLY -> {
-                val property = prevProperty() ?: return null
-                val referenceName = property.name ?: return null
-                val targets = property.collectTargetElements(referenceName, forward = true).toList()
-                val parentOrThis = parent as? KtBinaryExpression ?: this
-                if (this !is KtProperty && parentOrThis !in targets) return null
-                targets to referenceName
-            }
-            else -> {
-                if (this !is KtDotQualifiedExpression) return null
-                val referenceName = getLeftMostReceiverExpression().text
-                val prev = collectTargetElements(referenceName, forward = false).toList().reversed()
-                val next = collectTargetElements(referenceName, forward = true)
-                (prev + listOf(this) + next) to referenceName
-            }
+    private fun KtExpression.tryExtractReferenceName(): String? {
+        return when (scopeFunction) {
+            ALSO, APPLY -> prevProperty()?.name
+            RUN, WITH -> (this as? KtDotQualifiedExpression)?.let { getLeftMostReceiverExpression().text }
+            else -> throw NotImplementedError("${scopeFunction.functionName} is not implemented.")
         }
-        if (targets.isEmpty()) return null
-        return targets to referenceName
+    }
+
+    private fun KtExpression.collectTargetElements(referenceName: String): List<PsiElement>? {
+        val targets: List<PsiElement> = when (scopeFunction) {
+            ALSO, APPLY -> {
+                val targets = prevProperty()
+                    ?.collectTargetElements(referenceName, forward = true)
+                    ?.toList()
+                    ?: return null
+
+                if (this !is KtProperty && this !in targets) return null
+                targets
+            }
+            RUN, WITH -> {
+                mutableListOf<PsiElement>().also {
+                    it.addAll(collectTargetElements(referenceName, forward = false))
+                    it.reverse()
+
+                    it.add(this)
+
+                    it.addAll(collectTargetElements(referenceName, forward = true))
+                }
+            }
+            else -> throw NotImplementedError("${scopeFunction.functionName} is not implemented.")
+        }
+
+        return if (this in targets) targets else null
     }
 
     private fun KtExpression.collectTargetElements(referenceName: String, forward: Boolean): Sequence<PsiElement> {
