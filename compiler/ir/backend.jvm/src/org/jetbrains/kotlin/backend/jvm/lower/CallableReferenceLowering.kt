@@ -17,10 +17,10 @@ import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
 import org.jetbrains.kotlin.backend.jvm.codegen.isInlineFunctionCall
 import org.jetbrains.kotlin.backend.jvm.codegen.isInlineIrExpression
 import org.jetbrains.kotlin.backend.jvm.ir.isInlineParameter
+import org.jetbrains.kotlin.backend.jvm.ir.samConversionTarget
 import org.jetbrains.kotlin.codegen.PropertyReferenceCodegen
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.ir.IrStatement
-import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.builders.*
 import org.jetbrains.kotlin.ir.builders.declarations.addConstructor
 import org.jetbrains.kotlin.ir.builders.declarations.addFunction
@@ -86,7 +86,7 @@ internal class CallableReferenceLowering(private val context: JvmBackendContext)
     // Ignore function references handled in SAM conversion
     override fun visitTypeOperator(expression: IrTypeOperatorCall): IrExpression {
         if (expression.operator == IrTypeOperator.SAM_CONVERSION) {
-            val invokable = expression.argument
+            val invokable = expression.samConversionTarget
             if (invokable is IrFunctionReference) {
                 ignoredFunctionReferences += invokable
             } else if (invokable is IrBlock && invokable.statements.last() is IrFunctionReference) {

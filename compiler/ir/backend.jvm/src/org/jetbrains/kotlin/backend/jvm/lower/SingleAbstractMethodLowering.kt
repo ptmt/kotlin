@@ -14,6 +14,7 @@ import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.irBlock
 import org.jetbrains.kotlin.backend.common.phaser.makeIrFilePhase
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredDeclarationOrigin
+import org.jetbrains.kotlin.backend.jvm.ir.samConversionTarget
 import org.jetbrains.kotlin.backend.jvm.localDeclarationsPhase
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
@@ -26,12 +27,10 @@ import org.jetbrains.kotlin.ir.expressions.impl.IrInstanceInitializerCallImpl
 import org.jetbrains.kotlin.ir.types.IrType
 import org.jetbrains.kotlin.ir.types.classifierOrFail
 import org.jetbrains.kotlin.ir.types.isNullable
-import org.jetbrains.kotlin.ir.util.constructors
-import org.jetbrains.kotlin.ir.util.fqNameWhenAvailable
-import org.jetbrains.kotlin.ir.util.functions
-import org.jetbrains.kotlin.ir.util.isNullConst
+import org.jetbrains.kotlin.ir.util.*
 import org.jetbrains.kotlin.ir.visitors.transformChildrenVoid
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.psi2ir.generators.implicitCastTo
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
 internal val singleAbstractMethodPhase = makeIrFilePhase(
@@ -50,7 +49,7 @@ class SingleAbstractMethodLowering(val context: CommonBackendContext) : ClassLow
                 if (expression.operator != IrTypeOperator.SAM_CONVERSION)
                     return super.visitTypeOperator(expression)
                 val superType = expression.typeOperand
-                val invokable = expression.argument.transform(this, null)
+                val invokable = expression.samConversionTarget.transform(this, null)
                 // Running in the class context, so empty scope means this is a field/anonymous initializer.
                 val scopeOwnerSymbol = currentScope?.scope?.scopeOwnerSymbol ?: irClass.symbol
                 return context.createIrBuilder(scopeOwnerSymbol).irBlock(invokable, null, superType) {
@@ -65,7 +64,7 @@ class SingleAbstractMethodLowering(val context: CommonBackendContext) : ClassLow
                         +createFunctionProxyInstance(superType, invokable.statements.last() as IrFunctionReference)
                     } else {
                         // Fall back to materializing an invokable object.
-                        +createObjectProxyInstance(superType, invokable, expression)
+                        +createObjectProxyInstance(superType, invokable, expression.argument.type, expression)
                     }
                 }
             }
@@ -144,7 +143,9 @@ class SingleAbstractMethodLowering(val context: CommonBackendContext) : ClassLow
                 implement(superType, listOf(invokableType), attributeOwner) { fields ->
                     context.createIrBuilder(symbol).irBlockBody(startOffset, endOffset) {
                         val invokableClass = invokableType.classifierOrFail.owner as IrClass
-                        +irReturn(irCall(invokableClass.functions.single { it.name == OperatorNameConventions.INVOKE }).apply {
+                        val invoke = invokableClass.functions.singleOrNull { it.name == OperatorNameConventions.INVOKE }
+                            ?: error("Not a function type: ${invokableType.render()}")
+                        +irReturn(irCall(invoke).apply {
                             dispatchReceiver = irGetField(irGet(dispatchReceiverParameter!!), fields[0])
                             valueParameters.forEachIndexed { i, parameter -> putValueArgument(i, irGet(parameter)) }
                         })
@@ -152,22 +153,29 @@ class SingleAbstractMethodLowering(val context: CommonBackendContext) : ClassLow
                 }
 
             private fun IrBlockBuilder.createObjectProxyInstance(
-                superType: IrType, invokable: IrExpression, attributeOwner: IrAttributeContainer
+                superType: IrType, invokable: IrExpression, type: IrType, attributeOwner: IrAttributeContainer
             ): IrExpression {
                 // Do not generate a wrapper class for null, it has no invoke() anyway.
                 if (invokable.isNullConst())
                     return invokable
-                val implementation = cachedImplementations.getOrPut(superType to invokable.type) {
-                    createObjectProxy(superType, invokable.type, attributeOwner)
+                val implementation = cachedImplementations.getOrPut(superType to type) {
+                    createObjectProxy(superType, type, attributeOwner)
                 }
-                return if (superType.isNullable() && invokable.type.isNullable()) {
+                return if (superType.isNullable() && type.isNullable()) {
                     val invokableVariable = irTemporary(invokable)
-                    val instance = irCall(implementation.constructors.single()).apply { putValueArgument(0, irGet(invokableVariable)) }
+                    val instance = irCall(implementation.constructors.single()).apply {
+                        putValueArgument(0, irGet(invokableVariable).castIfNeededTo(type))
+                    }
                     irIfNull(superType, irGet(invokableVariable), irNull(), instance)
                 } else {
-                    irCall(implementation.constructors.single()).apply { putValueArgument(0, invokable) }
+                    irCall(implementation.constructors.single()).apply {
+                        putValueArgument(0, invokable.castIfNeededTo(type))
+                    }
                 }
             }
+
+            private fun IrExpression.castIfNeededTo(expectedType: IrType): IrExpression =
+                if (type == expectedType) this else implicitCastTo(expectedType)
 
             // This lowering is located after LocalDeclarationsLowering. On the one hand, this allows us to cache
             // object-wrapping classes without checking if the types are local declarations or not. On the other hand,

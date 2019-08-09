@@ -7,6 +7,9 @@ package org.jetbrains.kotlin.backend.jvm.ir
 
 import org.jetbrains.kotlin.backend.jvm.codegen.isJvmInterface
 import org.jetbrains.kotlin.ir.declarations.*
+import org.jetbrains.kotlin.ir.expressions.IrExpression
+import org.jetbrains.kotlin.ir.expressions.IrTypeOperator
+import org.jetbrains.kotlin.ir.expressions.IrTypeOperatorCall
 import org.jetbrains.kotlin.ir.symbols.IrClassSymbol
 import org.jetbrains.kotlin.ir.symbols.IrTypeParameterSymbol
 import org.jetbrains.kotlin.ir.types.*
@@ -79,3 +82,16 @@ fun IrFunction.hasJvmDefault(): Boolean = propertyIfAccessor.hasAnnotation(JVM_D
 
 fun IrValueParameter.isInlineParameter() =
     index >= 0 && !isNoinline && !type.isNullable() && (type.isFunction() || type.isSuspendFunctionTypeOrSubtype())
+
+val IrTypeOperatorCall.samConversionTarget: IrExpression
+    get() {
+        var result = argument
+
+        // In case the SAM interface's method is generic, there will be an additional IMPLICIT_CAST operator.
+        // See StatementGenerator.castArgumentToFunctionalInterfaceForSamType.
+        while (result is IrTypeOperatorCall && result.operator == IrTypeOperator.IMPLICIT_CAST) {
+            result = result.argument
+        }
+
+        return result
+    }

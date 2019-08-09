@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.backend.jvm.lower
 import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.phaser.makeIrFilePhase
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
+import org.jetbrains.kotlin.backend.jvm.ir.samConversionTarget
 import org.jetbrains.kotlin.codegen.JvmCodegenUtil
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.*
@@ -171,7 +172,7 @@ class InventNamesForLocalClasses(private val context: JvmBackendContext) : FileL
 
         override fun visitTypeOperator(expression: IrTypeOperatorCall, data: Data) {
             if (expression.operator == IrTypeOperator.SAM_CONVERSION) {
-                val invokable = expression.argument
+                val invokable = expression.samConversionTarget
                 // Function references (even those that are transformed into SAM wrappers) are handled in visitFunctionReference.
                 if (invokable !is IrFunctionReference && !(invokable is IrBlock && invokable.statements.last() is IrFunctionReference)) {
                     val superClass = expression.typeOperandClassifier.owner as IrClass
