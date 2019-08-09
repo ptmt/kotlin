@@ -9,10 +9,7 @@ import org.jetbrains.kotlin.backend.common.FileLoweringPass
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedFunctionDescriptorWithContainerSource
 import org.jetbrains.kotlin.backend.common.descriptors.WrappedSimpleFunctionDescriptor
 import org.jetbrains.kotlin.backend.common.descriptors.synthesizedName
-import org.jetbrains.kotlin.backend.common.ir.copyTo
-import org.jetbrains.kotlin.backend.common.ir.copyTypeParametersFrom
-import org.jetbrains.kotlin.backend.common.ir.createImplicitParameterDeclarationWithWrappedDescriptor
-import org.jetbrains.kotlin.backend.common.ir.isSuspend
+import org.jetbrains.kotlin.backend.common.ir.*
 import org.jetbrains.kotlin.backend.common.lower.createIrBuilder
 import org.jetbrains.kotlin.backend.common.lower.parents
 import org.jetbrains.kotlin.backend.common.peek
@@ -476,7 +473,7 @@ private class AddContinuationLowering(private val context: JvmBackendContext) : 
                     if (caller.isSuspend) caller.valueParameters.last().symbol
                     else if (caller.name.asString() == INVOKE_SUSPEND_METHOD_NAME && caller.parent in context.suspendLambdaToOriginalFunctionMap)
                         caller.dispatchReceiverParameter!!.symbol
-                    else error("suspend call outside suspend context")
+                    else error("suspend call outside suspend context: ${ir2string(caller)}")
                 return IrGetValueImpl(
                     UNDEFINED_OFFSET,
                     UNDEFINED_OFFSET,
