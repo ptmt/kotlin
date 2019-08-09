@@ -94,7 +94,7 @@ fun AbstractMultiModuleTest.doSetup(projectModel: ProjectResolveModel) {
             platform,
             implementedModuleNames = resolveModule.dependencies.filter { it.kind == ResolveDependency.Kind.DEPENDS_ON }.map { it.to.name }
         )
-        ideaModule.enableMultiPlatform()
+        ideaModule.enableMultiPlatformWithTypeRefinement()
     }
 }
 
@@ -142,7 +142,7 @@ private fun AbstractMultiModuleTest.doSetupProject(rootInfos: List<RootInfo>) {
                 val commonModuleId = ModuleId(name, CommonPlatforms.defaultCommonPlatform)
 
                 module.createFacet(platform, implementedModuleNames = listOf(commonModuleId.ideaModuleName()))
-                module.enableMultiPlatform()
+                module.enableMultiPlatformWithTypeRefinement()
 
                 modulesById[commonModuleId]?.let { commonModule ->
                     module.addDependency(commonModule)

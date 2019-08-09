@@ -109,12 +109,13 @@ abstract class AbstractMultiModuleTest : DaemonAnalyzerTestCase() {
         }, this, kind)
     }
 
-    fun Module.enableMultiPlatform() {
+    fun Module.enableMultiPlatformWithTypeRefinement() {
         createFacet()
         val facetSettings = KotlinFacetSettingsProvider.getInstance(project).getInitializedSettings(this)
         facetSettings.useProjectSettings = false
         facetSettings.compilerSettings = CompilerSettings().apply {
-            additionalArguments += " -Xmulti-platform -XXtype-refinement"
+            // Type refinement requires new inference, so it's enabled here as well
+            additionalArguments += " -Xmulti-platform -XXtype-refinement -Xnew-inference"
         }
     }
 
